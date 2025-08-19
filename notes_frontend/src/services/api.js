@@ -1,79 +1,81 @@
-//
-// PUBLIC_INTERFACE
-// Simple HTTP client for the notes backend API using axios.
-// Reads base URL from REACT_APP_API_BASE_URL environment variable.
-//
-import axios from 'axios';
-
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
-
-/**
- * Create an axios instance configured for the API.
- */
-const api = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json'
-  },
-  timeout: 15000
-});
-
-// Interceptor to normalize errors
-api.interceptors.response.use(
-  (resp) => resp,
-  (error) => {
-    const message = error?.response?.data?.message || error?.message || 'Request failed';
-    return Promise.reject(new Error(message));
-  }
-);
+ /**
+  * Simple API wrapper using fetch for the Notes app.
+  * Reads base URL from environment variables:
+  *   REACT_APP_API_BASE_URL
+  *
+  * If not provided, requests will be sent to relative paths (useful if a dev proxy is configured).
+  */
 
 // PUBLIC_INTERFACE
 export function getApiBaseUrl() {
-  /** Returns the base URL the frontend is using to connect to the backend API. */
-  return API_BASE_URL;
+  /** Returns the configured API base URL or empty string for relative paths. */
+  return process.env.REACT_APP_API_BASE_URL || '';
+}
+
+function buildUrl(path) {
+  const base = getApiBaseUrl();
+  if (!base) return path;
+  return `${base}${path}`;
+}
+
+async function handleJsonResponse(res, method, path) {
+  if (!res.ok) {
+    let message = '';
+    try {
+      const data = await res.json();
+      message = data?.error || JSON.stringify(data);
+    } catch {
+      message = await res.text();
+    }
+    throw new Error(message || `${method} ${path} failed with ${res.status}`);
+  }
+  const contentType = res.headers.get('content-type') || '';
+  if (contentType.includes('application/json')) {
+    return res.json();
+  }
+  return true;
 }
 
 // PUBLIC_INTERFACE
-export async function fetchNotes(params = {}) {
-  /** Fetch list of notes with optional filters.
-   * Params: { q?: string, category?: string }
-   * Returns: Array<Note>
-   */
-  const res = await api.get('/notes', { params });
-  return res.data;
+export async function apiGet(path) {
+  /** GET helper. */
+  const url = buildUrl(path);
+  const res = await fetch(url, {
+    method: 'GET',
+    headers: { Accept: 'application/json' }
+  });
+  return handleJsonResponse(res, 'GET', path);
 }
 
 // PUBLIC_INTERFACE
-export async function fetchCategories() {
-  /** Fetch list of categories. Returns: Array<{id: string, name: string, count?: number}> */
-  const res = await api.get('/categories');
-  return res.data;
+export async function apiPost(path, body) {
+  /** POST helper. */
+  const url = buildUrl(path);
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify(body)
+  });
+  return handleJsonResponse(res, 'POST', path);
 }
 
 // PUBLIC_INTERFACE
-export async function createNote(payload) {
-  /** Create a new note. Payload: { title, content, category } Returns: Note */
-  const res = await api.post('/notes', payload);
-  return res.data;
+export async function apiPut(path, body) {
+  /** PUT helper. */
+  const url = buildUrl(path);
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify(body)
+  });
+  return handleJsonResponse(res, 'PUT', path);
 }
 
 // PUBLIC_INTERFACE
-export async function updateNote(id, payload) {
-  /** Update an existing note by id. Payload: { title?, content?, category? } Returns: Note */
-  const res = await api.put(`/notes/${id}`, payload);
-  return res.data;
-}
-
-// PUBLIC_INTERFACE
-export async function deleteNote(id) {
-  /** Delete note by id. Returns: { success: boolean } */
-  const res = await api.delete(`/notes/${id}`);
-  return res.data;
-}
-
-// PUBLIC_INTERFACE
-export async function getNote(id) {
-  /** Fetch single note by id. Returns: Note */
-  const res = await api.get(`/notes/${id}`);
-  return res.data;
+export async function apiDelete(path) {
+  /** DELETE helper. */
+  const url = buildUrl(path);
+  const res = await fetch(url, { method: 'DELETE' });
+  if (res.status === 204) return true;
+  return handleJsonResponse(res, 'DELETE', path);
 }

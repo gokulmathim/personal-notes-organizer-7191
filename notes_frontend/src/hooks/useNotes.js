@@ -1,109 +1,103 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  fetchNotes,
-  fetchCategories,
-  createNote as apiCreate,
-  updateNote as apiUpdate,
-  deleteNote as apiDelete,
-  getNote as apiGet
-} from '../services/api';
+import { apiDelete, apiGet, apiPost, apiPut } from '../services/api';
 
 // PUBLIC_INTERFACE
 export function useNotes() {
-  /** Hook to manage notes data and actions in the app.
-   * Exposes: notes, categories, loading flags, selectedNote, filters, and CRUD handlers.
-   */
+  /** Hook that manages notes, categories, selection, and CRUD operations through the API. */
   const [notes, setNotes] = useState([]);
   const [categories, setCategories] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
+  const selectedNote = useMemo(
+    () => notes.find((n) => n.id === selectedId) || null,
+    [notes, selectedId]
+  );
+
   const [loading, setLoading] = useState(false);
   const [loadingCategories, setLoadingCategories] = useState(false);
   const [error, setError] = useState('');
   const [filters, setFilters] = useState({ q: '', category: '' });
 
-  const selectedNote = useMemo(
-    () => notes.find(n => n.id === selectedId) || null,
-    [selectedId, notes]
-  );
-
-  const loadCategories = useCallback(async () => {
-    setLoadingCategories(true);
+  const fetchNotes = useCallback(async () => {
+    setLoading(true);
     setError('');
     try {
-      const data = await fetchCategories();
-      setCategories(Array.isArray(data) ? data : []);
+      const params = new URLSearchParams();
+      if (filters.q) params.set('q', filters.q);
+      if (filters.category) params.set('category', filters.category);
+      const qs = params.toString();
+      const data = await apiGet(`/notes${qs ? `?${qs}` : ''}`);
+      setNotes(data);
     } catch (e) {
-      setError(e.message);
+      setError(e.message || 'Failed to fetch notes');
+    } finally {
+      setLoading(false);
+    }
+  }, [filters.q, filters.category]);
+
+  const fetchCategories = useCallback(async () => {
+    setLoadingCategories(true);
+    try {
+      const data = await apiGet('/categories');
+      setCategories(data);
+    } catch (e) {
+      setError((prev) => prev || e.message || 'Failed to fetch categories');
     } finally {
       setLoadingCategories(false);
     }
   }, []);
 
-  const loadNotes = useCallback(async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const data = await fetchNotes({
-        q: filters.q || undefined,
-        category: filters.category || undefined
-      });
-      setNotes(Array.isArray(data) ? data : []);
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setLoading(false);
-    }
-  }, [filters]);
+  useEffect(() => {
+    fetchNotes();
+  }, [fetchNotes]);
 
   useEffect(() => {
-    loadCategories();
-  }, [loadCategories]);
+    fetchCategories();
+  }, [fetchCategories]);
 
-  useEffect(() => {
-    loadNotes();
-  }, [loadNotes]);
-
-  // PUBLIC_INTERFACE
   const selectNote = useCallback((id) => {
-    /** Set the selected note by id */
     setSelectedId(id);
   }, []);
 
-  // PUBLIC_INTERFACE
-  const createNote = useCallback(async (payload) => {
-    /** Create a note and refresh list, returns created note */
-    const created = await apiCreate(payload);
-    await loadNotes();
-    setSelectedId(created?.id ?? null);
-    return created;
-  }, [loadNotes]);
+  const createNote = useCallback(
+    async (payload) => {
+      try {
+        const created = await apiPost('/notes', payload);
+        setNotes((prev) => [created, ...prev]);
+        setSelectedId(created.id);
+        fetchCategories();
+      } catch (e) {
+        setError(e.message || 'Failed to create note');
+      }
+    },
+    [fetchCategories]
+  );
 
-  // PUBLIC_INTERFACE
-  const updateNote = useCallback(async (id, payload) => {
-    /** Update a note by id and refresh list */
-    const updated = await apiUpdate(id, payload);
-    await loadNotes();
-    setSelectedId(updated?.id ?? id);
-    return updated;
-  }, [loadNotes]);
+  const updateNote = useCallback(
+    async (id, payload) => {
+      try {
+        const updated = await apiPut(`/notes/${id}`, payload);
+        setNotes((prev) => prev.map((n) => (n.id === id ? updated : n)));
+        fetchCategories();
+      } catch (e) {
+        setError(e.message || 'Failed to update note');
+      }
+    },
+    [fetchCategories]
+  );
 
-  // PUBLIC_INTERFACE
-  const removeNote = useCallback(async (id) => {
-    /** Delete a note by id and refresh list */
-    await apiDelete(id);
-    await loadNotes();
-    setSelectedId(prev => (prev === id ? null : prev));
-    return true;
-  }, [loadNotes]);
-
-  // PUBLIC_INTERFACE
-  const refreshSelected = useCallback(async () => {
-    /** Reload currently selected note detail (if needed) */
-    if (!selectedId) return null;
-    const fresh = await apiGet(selectedId);
-    setNotes(prev => prev.map(n => (n.id === fresh.id ? fresh : n)));
-    return fresh;
-  }, [selectedId]);
+  const removeNote = useCallback(
+    async (id) => {
+      try {
+        await apiDelete(`/notes/${id}`);
+        setNotes((prev) => prev.filter((n) => n.id !== id));
+        if (selectedId === id) setSelectedId(null);
+        fetchCategories();
+      } catch (e) {
+        setError(e.message || 'Failed to delete note');
+      }
+    },
+    [fetchCategories, selectedId]
+  );
 
   return {
     notes,
@@ -118,8 +112,6 @@ export function useNotes() {
     selectNote,
     createNote,
     updateNote,
-    removeNote,
-    refreshSelected,
-    reload: loadNotes
+    removeNote
   };
 }

@@ -29,6 +29,9 @@ A minimalistic, light-themed React application for creating, editing, organizing
 
 The app communicates with a backend via HTTP. Set the base URL using an environment variable.
 
+- A reference backend is included at `../notes_backend` (Express). Start it on port 8000 by default.
+- Ensure CORS is configured via `CORS_ORIGIN` on the backend.
+
 1. Copy `.env.example` to `.env`
 2. Set the variable:
    - `REACT_APP_API_BASE_URL` — e.g., `http://localhost:8000`
