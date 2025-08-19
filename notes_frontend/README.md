@@ -1,82 +1,95 @@
-# Lightweight React Template for KAVIA
+# Notes Frontend (React)
 
-This project provides a minimal React template with a clean, modern UI and minimal dependencies.
+A minimalistic, light-themed React application for creating, editing, organizing, and searching personal notes.
 
 ## Features
 
-- **Lightweight**: No heavy UI frameworks - uses only vanilla CSS and React
-- **Modern UI**: Clean, responsive design with KAVIA brand styling
-- **Fast**: Minimal dependencies for quick loading times
-- **Simple**: Easy to understand and modify
+- Create note
+- Edit note
+- Delete note
+- View notes list
+- Search notes
+- Category filtering (sidebar)
 
-## Getting Started
+## Layout
 
-In the project directory, you can run:
+- Top navigation bar with brand, search, and New Note button
+- Sidebar for note categories
+- Main content area displaying the notes list and editor side-by-side
 
-### `npm start`
+## Theme
 
-Runs the app in development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+- Light, minimalistic design
+- Colors:
+  - Primary: `#1976D2`
+  - Accent: `#FFC107`
+  - Secondary: `#424242`
 
-### `npm test`
+## Backend API
 
-Launches the test runner in interactive watch mode.
+The app communicates with a backend via HTTP. Set the base URL using an environment variable.
 
-### `npm run build`
+1. Copy `.env.example` to `.env`
+2. Set the variable:
+   - `REACT_APP_API_BASE_URL` — e.g., `http://localhost:8000`
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+Expected endpoints (JSON):
+- `GET /notes?q=&category=` → list notes
+- `POST /notes` → create note
+- `GET /notes/:id` → get note
+- `PUT /notes/:id` → update note
+- `DELETE /notes/:id` → delete note
+- `GET /categories` → list categories with optional counts
 
-## Customization
-
-### Colors
-
-The main brand colors are defined as CSS variables in `src/App.css`:
-
-```css
-:root {
-  --kavia-orange: #E87A41;
-  --kavia-dark: #1A1A1A;
-  --text-color: #ffffff;
-  --text-secondary: rgba(255, 255, 255, 0.7);
-  --border-color: rgba(255, 255, 255, 0.1);
+Note model (example):
+```json
+{
+  "id": "uuid-or-number",
+  "title": "My Note",
+  "content": "Markdown or plain text...",
+  "category": "work",
+  "createdAt": "2024-01-01T12:00:00Z",
+  "updatedAt": "2024-01-01T12:10:00Z"
 }
 ```
 
-### Components
+Category model (example):
+```json
+{ "id": "work", "name": "Work", "count": 3 }
+```
 
-This template uses pure HTML/CSS components instead of a UI framework. You can find component styles in `src/App.css`. 
+## Getting Started
 
-Common components include:
-- Buttons (`.btn`, `.btn-large`)
-- Container (`.container`)
-- Navigation (`.navbar`)
-- Typography (`.title`, `.subtitle`, `.description`)
+Install dependencies and start:
 
-## Learn More
+```bash
+npm install
+npm start
+```
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+Build for production:
 
-### Code Splitting
+```bash
+npm run build
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+Run tests:
 
-### Analyzing the Bundle Size
+```bash
+npm test
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+## Project Structure
 
-### Making a Progressive Web App
+- `src/components` — Navbar, Sidebar, NotesList, NoteEditor, StatusBar
+- `src/hooks` — `useNotes` manages state and API integration
+- `src/services` — `api.js` wraps axios requests
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+## Accessibility
 
-### Advanced Configuration
+- Keyboard-focusable interactive elements
+- ARIA roles/labels for main structural components
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+## Notes
 
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+- Ensure the backend supports CORS for the frontend origin during development.
